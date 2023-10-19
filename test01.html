@@ -1,0 +1,62 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>PoseNet 웹페이지</title>
+</head>
+<body>
+    <h1>사람의 어깨와 허리, 무릎 위치 표시</h1>
+    <video id="webcam" autoplay playsinline></video> <!--웹캠 비디오, 자동재생됨-->
+    <canvas id="output"></canvas> <!--어깨/ 허리 / 무릎 위치 표시 -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+
+    <script>
+        async function setupCamera() {
+            const video = document.getElementById('webcam');
+            const stream = await navigator.mediaDevices.getUserMedia({ 'audio': false, 'video': true });
+            video.srcObject = stream;
+
+            return new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    resolve(video);
+                };
+            });
+        }
+
+        async function loadPoseNet(video) {
+            const net = await posenet.load();
+            return net.estimateSinglePose(video);
+        }
+
+        async function drawKeypoints(keypoints) {
+            const canvas = document.getElementById('output');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (const keypoint of keypoints) {
+                const { x, y } = keypoint.position;
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = 'red';
+                ctx.fill();
+            }
+        }
+
+        async function detectPose() {
+            const video = await setupCamera();
+            video.play();
+
+            const poseDetectionFrame = async () => {
+                const pose = await loadPoseNet(video);
+                drawKeypoints(pose.keypoints);
+                requestAnimationFrame(poseDetectionFrame);
+            };
+
+            poseDetectionFrame();
+        }
+
+        detectPose();
+    </script>
+</body>
+</html>
